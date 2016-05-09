@@ -3,6 +3,10 @@
 ######################################
 ########### DESCRIPTION ##############
 ######################################
+# valk-nginx [options] [command] [arguments]
+# To easly managed the configuration of website on nginx. 
+# Regroup different tools which are automatizable.
+
 
 ######################################
 ############ ERROR CODE ##############
@@ -25,16 +29,15 @@ domain_name=$1
 
 function disabled { 
 
-	if [ ! -e "/etc/nginx/conf.d/""$domain_name"* ]; then
-		echo " This domain doesn't exist"
-		exit 10 
+	if [ ! -e "/etc/nginx/conf.d/""$domain_name"".conf" ]; then
+		echo " file /etc/nginx/conf.d/""$domain_name"".conf not found" 
+		exit 10
+
 	fi
 
-	mv /etc/nginx/conf.d/"$domain_name".conf /etc/nginx/conf.d/"$domain_name".disabled
+mv /etc/nginx/conf.d/"$domain_name".conf /etc/nginx/conf.d/"$domain_name".disabled
 
 	systemctl reload nginx
-
-}
 
 ######################################
 ############# PROTECTED ##############
