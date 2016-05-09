@@ -3,6 +3,10 @@
 ######################################
 ########### DESCRIPTION ##############
 ######################################
+# valk-nginx [options] [command] [arguments]
+# To easly managed the configuration of website on nginx. 
+# Regroup different tools which are automatizable.
+
 
 ######################################
 ############ ERROR CODE ##############
