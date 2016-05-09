@@ -29,8 +29,8 @@ domain_name=$1
 
 function disabled { 
 
-	if [ ! -e "/etc/nginx/conf.d/""$domain_name"* ]; then
-		echo " This domain doesn't exist"
+	if [ ! -e "/etc/nginx/conf.d/""$domain_name"".conf" ]; then
+		echo " File /etc/nginx/conf.d/""$domain_name"".conf not found"
 		exit 10 
 	fi
 
