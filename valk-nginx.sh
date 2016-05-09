@@ -40,6 +40,21 @@ function disabled {
 
 }
 
+# Enabled the domain enter in argument and reload nginx to applicate this modification
+#OK
+function enabled {
+	
+	if [ ! -e "/etc/nginx/conf.d/""$domain_name"".disabled" ]; then
+		echo " File /etc/nginx/conf.d/""$domain_name"".disable not found"
+		exit 10 
+	fi
+
+	mv /etc/nginx/conf.d/"$domain_name".disabled /etc/nginx/conf.d/"$domain_name".conf
+
+	systemctl reload nginx
+
+}
+
 ######################################
 ############# PROTECTED ##############
 ######################################
