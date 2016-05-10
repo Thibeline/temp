@@ -90,28 +90,52 @@ function remove {
 }
 
 #List all the active domain
-#ok
+#Vérifier comportement des options, fontionne de manière isolée
 function list {
 
-	echo "	DOMAIN" > int_name
-	echo "		STATUS" > int_status
+OPTS=$( getopt -o a,d -l all,disable -- "$@" )
 
-basename -a "$file_conf_location"*.conf > int.txt
-#ls "$file_conf_location"*.conf *.disable > int.txt
+if [ $? != 0 ]; then
+  exit 1
+fi
+
+eval set -- "$OPTS"
+
+echo "  DOMAIN" > int_name
+echo "    STATUS" > int_status
+
+basename -a "$file_conf_location"*.conf > int.txt ;
+
+while true ; do
+  case "$1" in
+    -a|--all) 
+      shift;
+      basename -a "$file_conf_location"*.conf > int.txt ;
+      basename -a "$file_conf_location"*.disabled >> int.txt;
+      ;;
+    -d|disable) 
+      shift;
+      basename -a "$file_conf_location"*.disabled > int.txt ;
+      ;;
+    --)
+      shift;
+      break;
+      ;;
+  esac
+done
 
 cut -d '.' -f 1 < int.txt  >> int_name 
 
 while read line
 do
-	echo "$line" | grep 'disable' > /dev/null
-	not_found=$?
+  echo "$line" | grep 'disable' > /dev/null
+  not_found=$?
 
-	if [[ $not_found == 1 ]]; then
-		echo active >> int_status
-	else
-		echo inactive >> int_status
-	fi
-
+  if [[ $not_found == 1 ]]; then
+    echo active >> int_status
+  else
+    echo inactive >> int_status
+  fi
 done < int.txt
 
 paste int_name int_status
