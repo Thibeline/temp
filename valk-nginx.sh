@@ -96,7 +96,7 @@ function list {
 	echo "	DOMAIN" > int_name
 	echo "		STATUS" > int_status
 
-ls "$file_conf_location"*.conf > int.txt
+basename -a "$file_conf_location"*.conf > int.txt
 #ls "$file_conf_location"*.conf *.disable > int.txt
 
 cut -d '.' -f 1 < int.txt  >> int_name 
