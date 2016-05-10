@@ -87,11 +87,37 @@ function remove {
 
 	systemctl reload nginx
 
-
-
-
 }
 
+#List all the active domain
+#ok
+function list {
+
+	echo "	DOMAIN" > int_name
+	echo "		STATUS" > int_status
+
+ls "$file_conf_location"*.conf > int.txt
+#ls "$file_conf_location"*.conf *.disable > int.txt
+
+cut -d '.' -f 1 < int.txt  >> int_name 
+
+while read line
+do
+	echo "$line" | grep 'disable' > /dev/null
+	not_found=$?
+
+	if [[ $not_found == 1 ]]; then
+		echo active >> int_status
+	else
+		echo inactive >> int_status
+	fi
+
+done < int.txt
+
+paste int_name int_status
+
+rm int*
+}
 ######################################
 ############# PROTECTED ##############
 ######################################
