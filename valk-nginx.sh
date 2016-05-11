@@ -101,30 +101,6 @@ function list {
 OPTS=$( getopt -o a,d -l all,disable -- "$@" )
 
 
-
-if [ $# = 0 ]; then
-	declare -A result
-
-	result[0, 0]=DOMAIN
-	result[0, 1]=STATUS
-
-	j=1
-	for entry in /home/thib/temp/test-list/*; do
-		p=`basename "$entry"`
-		t=${p%.*}
-		echo "$p" | grep 'disable' > /dev/null
-	    not_found=$?
-		if [[ $not_found == 1 ]]; then
-		    result[$j, 1]=Active
-		    result[$j, 0]=$t
-		    ((j++))
-		fi
-
-	done
-fi
-
-
-
 eval set -- "$OPTS"
 
 declare -A result
@@ -184,8 +160,28 @@ while true ; do
   esac
 done
 
-echo $result
+cond="${result[@]}"
 
+if [[ -z $cond ]]; then
+	declare -A result
+
+	result[0, 0]=DOMAIN
+	result[0, 1]=STATUS
+
+	j=1
+	for entry in /home/thib/temp/test-list/*; do
+		p=`basename "$entry"`
+		t=${p%.*}
+		echo "$p" | grep 'disable' > /dev/null
+	    not_found=$?
+		if [[ $not_found == 1 ]]; then
+		    result[$j, 1]=Active
+		    result[$j, 0]=$t
+		    ((j++))
+		fi
+
+	done
+fi
 
 let "k=${#result[@]}/2"
 
