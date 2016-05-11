@@ -20,8 +20,12 @@ DOMAIN_EXISTING=11
 ######################################
 
 domain_name=$1
-files_log_location="~/var/www/"
-file_conf_location="~/etc/nginx/conf.d/"
+files_log_location="~/temp/log/"
+file_conf_location="~/temp/conf/"
+log_location_name="${files_log_location}${domain_name}"
+conf_location_name="${file_conf_location}${domain_name}"
+
+
 
 ######################################
 ############# FUNCTION ###############
@@ -31,7 +35,7 @@ file_conf_location="~/etc/nginx/conf.d/"
 # OK
 function disabled { 
 
-	if [ ! -e "$file_conf_location""$domain_name"".conf" ]; then
+	if [ ! -e "$file_conf_location${domain_name}.conf" ]; then
 		echo "  File ""$file_conf_location""$domain_name"".conf not found"
 		exit FILE_NOT_FOUND 
 	fi
@@ -46,12 +50,12 @@ function disabled {
 #OK
 function enabled {
 	
-	if [ ! -e "$file_conf_location""$domain_name"".disabled" ]; then
-		echo " File ""$file_conf_location""$domain_name"".disable not found"
+	if [ ! -e "${conf_location_name}.disabled" ]; then
+		echo " File ${conf_location_name}.disable not found"
 		exit FILE_NOT_FOUND 
 	fi
 
-	mv "$file_conf_location""$domain_name".disabled "$file_conf_location""$domain_name".conf
+	mv "$conf_location_name".disabled "$conf_location_name".conf
 
 	systemctl reload nginx
 
@@ -59,14 +63,14 @@ function enabled {
 #OK
 function created {
 
-	if [ -e "$file_conf_location""$domain_name"* ]; then
-		echo " This domain already exist."
+	if [ -e "${conf_location_name}"* ]; then
+		echo "Error : This domain already exist."
 		exit DOMAIN_EXISTING
 	fi
 
-	touch "$file_conf_location""$domain_name".conf
-	mkdir "$files_log_location""$domain_name"
-	touch "$files_log_location""$domain_name""/error-log" "$files_log_location""$domain_name""/acces-log"
+	touch "${conf_location_name}".conf
+	mkdir "$log_location_name"
+	touch "${log_location_name}/error.log" "${log_location_name}/access.log"
 
 	systemctl reload nginx
 
@@ -76,13 +80,13 @@ function created {
 #OK
 function remove {
 
-	if [ ! -e "$file_conf_location""$domain_name"* ]; then
-		echo "  File ""$file_conf_location""$domain_name"".conf not found"
+	if [ ! -e "${conf_location_name}"* ]; then
+		echo "  File ${conf_location_name}.conf not found"
 		exit FILE_NOT_FOUND 
 	fi
 
-	rm "$file_conf_location""$domain_name".*
-	rm -rf "$files_log_location""$domain_name"
+	rm "${conf_location_name}".*
+	rm -rf "${log_location_name}"
 	
 
 	systemctl reload nginx
@@ -93,29 +97,85 @@ function remove {
 #Vérifier comportement des options, fontionne de manière isolée
 function list {
 
+# Declare options
 OPTS=$( getopt -o a,d -l all,disable -- "$@" )
 
-if [ $? != 0 ]; then
-  exit 1
+
+
+if [ $# = 0 ]; then
+	declare -A result
+
+	result[0, 0]=DOMAIN
+	result[0, 1]=STATUS
+
+	j=1
+	for entry in /home/thib/temp/test-list/*; do
+		p=`basename "$entry"`
+		t=${p%.*}
+		echo "$p" | grep 'disable' > /dev/null
+	    not_found=$?
+		if [[ $not_found == 1 ]]; then
+		    result[$j, 1]=Active
+		    result[$j, 0]=$t
+		    ((j++))
+		fi
+
+	done
 fi
+
+
 
 eval set -- "$OPTS"
 
-echo "  DOMAIN" > int_name
-echo "    STATUS" > int_status
-
-basename -a "$file_conf_location"*.conf > int.txt ;
+declare -A result
 
 while true ; do
   case "$1" in
     -a|--all) 
-      shift;
-      basename -a "$file_conf_location"*.conf > int.txt ;
-      basename -a "$file_conf_location"*.disabled >> int.txt;
+      shift;	
+
+		result[0, 0]=DOMAIN
+		result[0, 1]=STATUS
+
+
+		j=1
+		for entry in /home/thib/temp/test-list/*; do
+			p=`basename "$entry"`
+			t=${p%.*}
+			result[$j, 0]=$t
+
+			echo "$p" | grep 'disable' > /dev/null
+		    not_found=$?
+
+			if [[ $not_found == 1 ]]; then
+			    result[$j, 1]=Active
+			else
+			    result[$j, 1]=Inactive
+			fi
+			
+			((j++))
+
+		done
       ;;
-    -d|disable) 
-      shift;
-      basename -a "$file_conf_location"*.disabled > int.txt ;
+    -d|--disable) 
+		shift;
+
+			result[0, 0]=DOMAIN
+			result[0, 1]=STATUS
+
+			j=1
+			for entry in /home/thib/temp/test-list/*; do
+				p=`basename "$entry"`
+				t=${p%.*}
+				echo "$p" | grep 'disable' > /dev/null
+			    not_found=$?
+				if [[ $not_found == 0 ]]; then
+				    result[$j, 1]=Inactive
+				    result[$j, 0]=$t
+				    ((j++))
+				fi
+
+			done
       ;;
     --)
       shift;
@@ -124,23 +184,16 @@ while true ; do
   esac
 done
 
-cut -d '.' -f 1 < int.txt  >> int_name 
+echo $result
 
-while read line
-do
-  echo "$line" | grep 'disable' > /dev/null
-  not_found=$?
 
-  if [[ $not_found == 1 ]]; then
-    echo active >> int_status
-  else
-    echo inactive >> int_status
-  fi
-done < int.txt
+let "k=${#result[@]}/2"
 
-paste int_name int_status
+for ((i=0;i<=k;i++)) do
+    printf   '%-30s %-30s\n' ${result[$i, 0]} ${result[$i, 1]}; 
+done
 
-rm int*
+unset -v result
 }
 ######################################
 ############# PROTECTED ##############
