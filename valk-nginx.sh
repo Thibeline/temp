@@ -20,8 +20,8 @@ DOMAIN_EXISTING=11
 ######################################
 
 domain_name=$1
-files_log_location="/home/thib/var/www/"
-file_conf_location="/etc/nginx/conf.d/"
+files_log_location="~/var/www/"
+file_conf_location="~/etc/nginx/conf.d/"
 
 ######################################
 ############# FUNCTION ###############
