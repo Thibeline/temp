@@ -1,9 +1,15 @@
 #!/bin/bash
 
+#Unofficial Bash Strict Mode
+set -e
+set -u
+set -o pipefail
+IFS=$'\n\t'
+
 ######################################
 ########### DESCRIPTION ##############
 ######################################
-# valk-nginx [sub-command] [arguments] [options] 
+# valk-nginx [sub-command] [options] [arguments] 
 # To easly managed the configuration of website on nginx. 
 # Regroup different tools which are automatizable.
 
@@ -21,10 +27,6 @@ DOMAIN_EXISTING=11
 
 files_log_location="/home/thib/temp/log/"
 file_conf_location="/home/thib/temp/conf/"
-log_location_name="${files_log_location}${domain_name}"
-conf_location_name="${file_conf_location}${domain_name}"
-
-
 
 ######################################
 ############# FUNCTION ###############
@@ -105,6 +107,8 @@ result[0, 1]=STATUS
 
 j=1
 
+set +e
+
 if [[ -n "${opt_a}" ]]; then
 	for entry in "${file_conf_location}"*; do
 
@@ -154,7 +158,9 @@ else
 	done
 fi
 
-let "k=${#result[@]}/2"
+set -e
+
+let "k=${#result[@]}/2 - 1"
 
 for ((i=0;i<=k;i++)) do
     printf   '%-30s %-30s\n' ${result[$i, 0]} ${result[$i, 1]}; 
@@ -164,11 +170,12 @@ unset -v result
 
 }
 
-
+#fucntion main who call the right function depending of the parameter
+#ok
 function main() {
 
 
-case "$func" in
+case "$FUNC" in
 	created)
 		created
 		;;
@@ -187,6 +194,7 @@ case "$func" in
 esac
 
 }
+
 ######################################
 ############# PROTECTED ##############
 ######################################
@@ -195,9 +203,14 @@ esac
 ################ MAIN ################
 ######################################
 
-func="$1"
+
+declare -r FUNC="$1"
 shift;
 
+opt_a=""
+opt_d=""
+
+#reading option put in input 
 OPTS=$( getopt -o a,d -l all,disable -- "$@" )
 
 eval set -- "$OPTS"
@@ -218,7 +231,8 @@ while true ; do
   esac
 done
 
-
+#reading the name of the domain we want to use
+# NEED TO BE THE LAST ARG OF THE CALL
 for last; do true; done
 domain_name=$last
 
