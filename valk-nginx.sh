@@ -19,9 +19,8 @@ DOMAIN_EXISTING=11
 ############ VARIABLE ################
 ######################################
 
-domain_name=$1
-files_log_location="~/temp/log/"
-file_conf_location="~/temp/conf/"
+files_log_location="/home/thib/temp/log/"
+file_conf_location="/home/thib/temp/conf/"
 log_location_name="${files_log_location}${domain_name}"
 conf_location_name="${file_conf_location}${domain_name}"
 
@@ -33,7 +32,7 @@ conf_location_name="${file_conf_location}${domain_name}"
 
 # Disabled the domain enter in argument and reload nginx to applicate this modification
 # OK
-function disabled { 
+function disabled() { 
 
 	if [ ! -e "$file_conf_location${domain_name}.conf" ]; then
 		echo "  File ""$file_conf_location""$domain_name"".conf not found"
@@ -48,7 +47,7 @@ function disabled {
 
 # Enabled the domain enter in argument and reload nginx to applicate this modification
 #OK
-function enabled {
+function enabled() {
 	
 	if [ ! -e "${conf_location_name}.disabled" ]; then
 		echo " File ${conf_location_name}.disable not found"
@@ -59,9 +58,11 @@ function enabled {
 
 	systemctl reload nginx
 
+}
+
 #Create an empty conf file and log files related
 #OK
-function created {
+function created() {
 
 	if [ -e "${conf_location_name}"* ]; then
 		echo "Error : This domain already exist."
@@ -78,7 +79,7 @@ function created {
 
 #Remove conf and log files related to a domain name
 #OK
-function remove {
+function remove() {
 
 	if [ ! -e "${conf_location_name}"* ]; then
 		echo "  File ${conf_location_name}.conf not found"
@@ -95,33 +96,24 @@ function remove {
 
 #List all the active domain
 #Vérifier comportement des options, fontionne de manière isolée
-function list {
-
-# Declare options
-OPTS=$( getopt -o a,d -l all,disable -- "$@" )
-
-
-eval set -- "$OPTS"
+function list() {
 
 declare -A result
 
-while true ; do
-  case "$1" in
-    -a|--all) 
-      shift;	
+result[0, 0]=DOMAIN
+result[0, 1]=STATUS
 
-		result[0, 0]=DOMAIN
-		result[0, 1]=STATUS
+j=1
 
+if [[ -n "${opt_a}" ]]; then
+	for entry in "${file_conf_location}"*; do
 
-		j=1
-		for entry in /home/thib/temp/test-list/*; do
-			p=`basename "$entry"`
-			t=${p%.*}
-			result[$j, 0]=$t
+		p=`basename "$entry"`
+		t=${p%.*}
+		result[$j, 0]=$t
 
-			echo "$p" | grep 'disable' > /dev/null
-		    not_found=$?
+		echo "$p" | grep 'disable' > /dev/null
+		not_found=$?
 
 			if [[ $not_found == 1 ]]; then
 			    result[$j, 1]=Active
@@ -129,47 +121,26 @@ while true ; do
 			    result[$j, 1]=Inactive
 			fi
 			
-			((j++))
+		((j++))
 
-		done
-      ;;
-    -d|--disable) 
-		shift;
+	done
 
-			result[0, 0]=DOMAIN
-			result[0, 1]=STATUS
+elif [[ -n "${opt_d}" ]]; then
+	for entry in "${file_conf_location}"*; do
+		p=`basename "$entry"`
+		t=${p%.*}
+		echo "$p" | grep 'disable' > /dev/null
+	    not_found=$?
+			if [[ $not_found == 0 ]]; then
+			    result[$j, 1]=Inactive
+			    result[$j, 0]=$t
+			    ((j++))
+			fi
 
-			j=1
-			for entry in /home/thib/temp/test-list/*; do
-				p=`basename "$entry"`
-				t=${p%.*}
-				echo "$p" | grep 'disable' > /dev/null
-			    not_found=$?
-				if [[ $not_found == 0 ]]; then
-				    result[$j, 1]=Inactive
-				    result[$j, 0]=$t
-				    ((j++))
-				fi
+	done
+else
 
-			done
-      ;;
-    --)
-      shift;
-      break;
-      ;;
-  esac
-done
-
-cond="${result[@]}"
-
-if [[ -z $cond ]]; then
-	declare -A result
-
-	result[0, 0]=DOMAIN
-	result[0, 1]=STATUS
-
-	j=1
-	for entry in /home/thib/temp/test-list/*; do
+	for entry in "${file_conf_location}"*; do
 		p=`basename "$entry"`
 		t=${p%.*}
 		echo "$p" | grep 'disable' > /dev/null
@@ -190,6 +161,31 @@ for ((i=0;i<=k;i++)) do
 done
 
 unset -v result
+
+}
+
+
+function main() {
+
+
+case "$func" in
+	created)
+		created
+		;;
+	disabled)
+		disabled
+		;;
+	enabled)
+		enabled
+		;;
+	remove)
+		remove
+		;;
+	list)
+		list
+		;;
+esac
+
 }
 ######################################
 ############# PROTECTED ##############
@@ -199,4 +195,36 @@ unset -v result
 ################ MAIN ################
 ######################################
 
+func="$1"
+shift;
 
+OPTS=$( getopt -o a,d -l all,disable -- "$@" )
+
+eval set -- "$OPTS"
+
+while true ; do
+  case "$1" in
+    -a|--all) 
+      shift;
+      opt_a=AAA
+      ;;
+    -d|--disable) 
+	  shift;
+	  opt_d=BBB
+	  ;;
+    --)
+      break;
+      ;;
+  esac
+done
+
+
+for last; do true; done
+domain_name=$last
+
+log_location_name="${files_log_location}${domain_name}"
+conf_location_name="${file_conf_location}${domain_name}"
+
+main
+
+exit
