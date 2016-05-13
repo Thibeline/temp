@@ -25,57 +25,57 @@ DOMAIN_EXISTING=11
 ############ VARIABLE ################
 ######################################
 
-files_log_location="/home/thib/temp/log/"
-file_conf_location="/home/thib/temp/conf/"
+nginx_log_dir="/home/thib/temp/log"
+nginx_conf_dir="/home/thib/temp/conf"
 
 ######################################
 ############# FUNCTION ###############
 ######################################
 
-# Disabled the domain enter in argument and reload nginx to applicate this modification
+# disable the domain enter in argument and reload nginx to applicate this modification
 # OK
-function disabled() { 
+function disable() { 
 
-	if [ ! -e "$file_conf_location${domain_name}.conf" ]; then
-		echo "  File ""$file_conf_location""$domain_name"".conf not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}.conf" ]; then
+		echo "  File ${domain_conf_path}.conf not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "$file_conf_location""$domain_name".conf "$file_conf_location""$domain_name".disabled
+	mv "${domain_conf_path}.conf".conf "${domain_conf_path}.conf".disable
 
-	systemctl reload nginx
+	reload_nginx
 
 }
 
-# Enabled the domain enter in argument and reload nginx to applicate this modification
+# activate the domain enter in argument and reload nginx to applicate this modification
 #OK
-function enabled() {
+function activate() {
 	
-	if [ ! -e "${conf_location_name}.disabled" ]; then
-		echo " File ${conf_location_name}.disable not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}.disable" ]; then
+		echo " File ${domain_conf_path}.disable not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "$conf_location_name".disabled "$conf_location_name".conf
+	mv "$domain_conf_path".disable "$domain_conf_path".conf
 
-	systemctl reload nginx
+	reload_nginx
 
 }
 
 #Create an empty conf file and log files related
 #OK
-function created() {
+function creat() {
 
-	if [ -e "${conf_location_name}"* ]; then
+	if [ -e "${domain_conf_path}"* ]; then
 		echo "Error : This domain already exist."
-		exit DOMAIN_EXISTING
+		exit $DOMAIN_EXISTING
 	fi
 
-	touch "${conf_location_name}".conf
-	mkdir "$log_location_name"
-	touch "${log_location_name}/error.log" "${log_location_name}/access.log"
+	touch "${domain_conf_path}".conf
+	mkdir "$domain_log_path"
+	touch "${domain_log_path}/error.log" "${domain_log_path}/access.log"
 
-	systemctl reload nginx
+	reload_nginx
 
 }
 
@@ -83,17 +83,16 @@ function created() {
 #OK
 function remove() {
 
-	if [ ! -e "${conf_location_name}"* ]; then
-		echo "  File ${conf_location_name}.conf not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}"* ]; then
+		echo "  File ${domain_conf_path}.conf not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	rm "${conf_location_name}".*
-	rm -rf "${log_location_name}"
+	rm "${domain_conf_path}".*
+	rm -rf "${domain_log_path}"
 	
 
-	systemctl reload nginx
-
+	reload_nginx
 }
 
 #List all the active domain
@@ -110,19 +109,23 @@ j=1
 set +e
 
 if [[ -n "${opt_a}" ]]; then
-	for entry in "${file_conf_location}"*; do
+	for entry in "${nginx_conf_dir}"*; do
 
 		p=`basename "$entry"`
 		t=${p%.*}
 		result[$j, 0]=$t
 
 		echo "$p" | grep 'disable' > /dev/null
-		not_found=$?
+		not_found1=$?
+		echo "$p" | grep '.conf' > /dev/null
+		not_found2=$?
 
-			if [[ $not_found == 1 ]]; then
-			    result[$j, 1]=Active
-			else
+			if [[ $not_found1 == 0 ]]; then
 			    result[$j, 1]=Inactive
+			elif [[ $not_found2 == 0 ]]; then
+			    result[$j, 1]=Active
+			else 
+				result[$j, 1]=Unknown
 			fi
 			
 		((j++))
@@ -130,7 +133,7 @@ if [[ -n "${opt_a}" ]]; then
 	done
 
 elif [[ -n "${opt_d}" ]]; then
-	for entry in "${file_conf_location}"*; do
+	for entry in "${nginx_conf_dir}"*; do
 		p=`basename "$entry"`
 		t=${p%.*}
 		echo "$p" | grep 'disable' > /dev/null
@@ -144,12 +147,12 @@ elif [[ -n "${opt_d}" ]]; then
 	done
 else
 
-	for entry in "${file_conf_location}"*; do
+	for entry in "${nginx_conf_dir}"*; do
 		p=`basename "$entry"`
 		t=${p%.*}
-		echo "$p" | grep 'disable' > /dev/null
+		echo "$p" | grep '.conf' > /dev/null
 	    not_found=$?
-		if [[ $not_found == 1 ]]; then
+		if [[ $not_found == 0 ]]; then
 		    result[$j, 1]=Active
 		    result[$j, 0]=$t
 		    ((j++))
@@ -176,14 +179,14 @@ function main() {
 
 
 case "$FUNC" in
-	created)
-		created
+	creat)
+		creat
 		;;
-	disabled)
-		disabled
+	disable)
+		disable
 		;;
-	enabled)
-		enabled
+	activate)
+		activate
 		;;
 	remove)
 		remove
@@ -199,10 +202,14 @@ esac
 ############# PROTECTED ##############
 ######################################
 
-######################################
-################ MAIN ################
-######################################
+function reload_nginx() {
+	
+	systemctl reload nginx
 
+}
+
+
+function arguments() {
 
 declare -r FUNC="$1"
 shift;
@@ -223,7 +230,7 @@ while true ; do
       ;;
     -d|--disable) 
 	  shift;
-	  opt_d=BBB
+	  opt_d=DDD
 	  ;;
     --)
       break;
@@ -234,10 +241,37 @@ done
 #reading the name of the domain we want to use
 # NEED TO BE THE LAST ARG OF THE CALL
 for last; do true; done
-domain_name=$last
+declare -r domain_name=$last
 
-log_location_name="${files_log_location}${domain_name}"
-conf_location_name="${file_conf_location}${domain_name}"
+declare -r domain_log_path="${nginx_log_dir}/${domain_name}"
+declare -r domain_conf_path="${nginx_conf_dir}/${domain_name}"
+}
+
+function main() {
+
+arguments
+
+case "$FUNC" in
+	creat)
+		creat
+		;;
+	disable)
+		disable
+		;;
+	activate)
+		activate
+		;;
+	remove)
+		remove
+		;;
+	list)
+		list
+		;;
+esac
+
+######################################
+################ MAIN ################
+######################################
 
 main
 
