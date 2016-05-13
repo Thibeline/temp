@@ -247,11 +247,22 @@ done
 # NEED TO BE THE LAST ARG OF THE CALL
 for last; do true; done
 export domain_name=$last
+shift "$#";
 
-if [[ ! "${domain_name}" =~ ^[[:alnum:]][-[[:alnum:]] ]]; then
+
+
+if [[ -z domain ]] && [[ ! "${domain_name}" =~ ^[[:alnum:]][-[[:alnum:]] ]]; then
 	echo "The domain must begin with a letter or a number and contain letter, number or an hyphen."
 	exit  $DOMAIN_NAME_INVALID
 fi
+
+
+set +u
+if [[ -n "$1" ]]; then
+	echo "ERROR too many arguments"
+	exit $TOO_MANY_ARG
+fi
+set -u
 
 export domain_log_path="${nginx_log_dir}/${domain_name}"
 export domain_conf_path="${nginx_conf_dir}/${domain_name}"
