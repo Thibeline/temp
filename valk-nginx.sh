@@ -1,9 +1,15 @@
 #!/bin/bash
 
+#Unofficial Bash Strict Mode
+set -e
+set -u
+set -o pipefail
+IFS=$'\n\t'
+
 ######################################
 ########### DESCRIPTION ##############
 ######################################
-# valk-nginx [sub-command] [arguments] [options] 
+# valk-nginx [sub-command] [options] [arguments] 
 # To easly managed the configuration of website on nginx. 
 # Regroup different tools which are automatizable.
 
@@ -19,111 +25,265 @@ DOMAIN_EXISTING=11
 ############ VARIABLE ################
 ######################################
 
-domain_name=$1
-files_log_location="/home/thib/var/www/"
-file_conf_location="/etc/nginx/conf.d/"
+nginx_log_dir="/home/thib/temp/log"
+nginx_conf_dir="/home/thib/temp/conf"
 
 ######################################
 ############# FUNCTION ###############
 ######################################
 
-# Disabled the domain enter in argument and reload nginx to applicate this modification
+# disable the domain enter in argument and reload nginx to applicate this modification
 # OK
-function disabled { 
+function disable() { 
 
-	if [ ! -e "$file_conf_location""$domain_name"".conf" ]; then
-		echo "  File ""$file_conf_location""$domain_name"".conf not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}.conf" ]; then
+		echo "  File ${domain_conf_path}.conf not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "$file_conf_location""$domain_name".conf "$file_conf_location""$domain_name".disabled
+	mv "${domain_conf_path}.conf" "${domain_conf_path}.disable"
 
-	systemctl reload nginx
+	reload_nginx
 
 }
 
-# Enabled the domain enter in argument and reload nginx to applicate this modification
+# activate the domain enter in argument and reload nginx to applicate this modification
 #OK
-function enabled {
+function activate() {
 	
-	if [ ! -e "$file_conf_location""$domain_name"".disabled" ]; then
-		echo " File ""$file_conf_location""$domain_name"".disable not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}*" ]; then
+		echo " File ${domain_conf_path} not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "$file_conf_location""$domain_name".disabled "$file_conf_location""$domain_name".conf
+	mv "$domain_conf_path"* "$domain_conf_path".conf
 
-	systemctl reload nginx
+	reload_nginx
+
+}
 
 #Create an empty conf file and log files related
 #OK
-function created {
+function creat() {
 
-	if [ -e "$file_conf_location""$domain_name"* ]; then
-		echo " This domain already exist."
-		exit DOMAIN_EXISTING
+	if [ -e "${domain_conf_path}"* ]; then
+		echo "Error : This domain already exist."
+		exit $DOMAIN_EXISTING
 	fi
 
-	touch "$file_conf_location""$domain_name".conf
-	mkdir "$files_log_location""$domain_name"
-	touch "$files_log_location""$domain_name""/error-log" "$files_log_location""$domain_name""/acces-log"
+	touch "${domain_conf_path}".conf
+	mkdir "$domain_log_path"
+	touch "${domain_log_path}/error.log" "${domain_log_path}/access.log"
 
-	systemctl reload nginx
+	reload_nginx
 
 }
 
 #Remove conf and log files related to a domain name
 #OK
-function remove {
+function remove() {
 
-	if [ ! -e "$file_conf_location""$domain_name"* ]; then
-		echo "  File ""$file_conf_location""$domain_name"".conf not found"
-		exit FILE_NOT_FOUND 
+	if [ ! -e "${domain_conf_path}"* ]; then
+		echo "  File ${domain_conf_path} not found"
+		exit $FILE_NOT_FOUND 
 	fi
 
-	rm "$file_conf_location""$domain_name".*
-	rm -rf "$files_log_location""$domain_name"
-	
+	rm "${domain_conf_path}".*
 
-	systemctl reload nginx
+	if [[ -z "${opt_k}" ]]; then
+		rm -rf "${domain_log_path}"
+	fi
 
+	reload_nginx
 }
 
 #List all the active domain
-#ok
-function list {
+#Vérifier comportement des options, fontionne de manière isolée
+function list() {
 
-	echo "	DOMAIN" > int_name
-	echo "		STATUS" > int_status
+declare -A result
 
-basename -a "$file_conf_location"*.conf > int.txt
-#ls "$file_conf_location"*.conf *.disable > int.txt
+result[0, 0]=DOMAIN
+result[0, 1]=STATUS
 
-cut -d '.' -f 1 < int.txt  >> int_name 
+j=1
 
-while read line
-do
-	echo "$line" | grep 'disable' > /dev/null
-	not_found=$?
+set +e
 
-	if [[ $not_found == 1 ]]; then
-		echo active >> int_status
-	else
-		echo inactive >> int_status
-	fi
+if [[ -n "${opt_a}" ]]; then
 
-done < int.txt
+	for entry in "${nginx_conf_dir}"/*; do
 
-paste int_name int_status
+		p=`basename "$entry"`
+		t=${p%.*}
+		result[$j, 0]=$t
 
-rm int*
+		echo "$p" | grep 'disable' > /dev/null
+		not_found1=$?
+		echo "$p" | grep '.conf' > /dev/null
+		not_found2=$?
+
+			if [[ $not_found1 == 0 ]]; then
+			    result[$j, 1]=Inactive
+			elif [[ $not_found2 == 0 ]]; then
+			    result[$j, 1]=Active
+			else 
+				result[$j, 1]=Unknown
+			fi
+			
+		((j++))
+
+	done
+
+elif [[ -n "${opt_d}" ]]; then
+
+	for entry in "${nginx_conf_dir}"/*; do
+		p=`basename "$entry"`
+		t=${p%.*}
+		echo "$p" | grep 'disable' > /dev/null
+	    not_found=$?
+			if [[ $not_found == 0 ]]; then
+			    result[$j, 1]=Inactive
+			    result[$j, 0]=$t
+			    ((j++))
+			fi
+
+	done
+
+else
+
+
+	for entry in "${nginx_conf_dir}"/*; do
+		p=`basename "$entry"`
+		t=${p%.*}
+		echo "$p" | grep '.conf' > /dev/null
+	    not_found=$?
+		if [[ $not_found == 0 ]]; then
+		    result[$j, 1]=Active
+		    result[$j, 0]=$t
+		    ((j++))
+		fi
+
+	done
+fi
+
+set -e
+
+let "k=${#result[@]}/2 - 1"
+
+for ((i=0;i<=k;i++)) do
+    printf   '%-30s %-30s\n' ${result[$i, 0]} ${result[$i, 1]}; 
+done
+
+unset -v result
+
 }
+
+#fucntion main who call the right function depending of the parameter
+#ok
+function main() {
+
+
+case "$FUNC" in
+	creat)
+		creat
+		;;
+	disable)
+		disable
+		;;
+	activate)
+		activate
+		;;
+	remove)
+		remove
+		;;
+	list)
+		list
+		;;
+esac
+
+}
+
 ######################################
 ############# PROTECTED ##############
 ######################################
 
+function reload_nginx() {
+	
+	systemctl reload nginx
+
+}
+
+
+function arguments() {
+
+export FUNC="$1"
+shift;
+
+opt_a=""
+opt_d=""
+opt_k=""
+
+#reading option put in input 
+OPTS=$( getopt -o a,d,k -l all,disable -- "$@" )
+
+eval set -- "$OPTS"
+
+while true ; do
+  case "$1" in
+    -a|--all) 
+      shift;
+      export opt_a=AAA
+      ;;
+    -d|--disable) 
+	  shift;
+	  export opt_d=DDD
+	  ;;
+	-k|--keeplog)
+	  shift;
+	  export opt_k=KKK
+	  ;;
+    --)
+      break;
+      ;;
+  esac
+done
+
+#reading the name of the domain we want to use
+# NEED TO BE THE LAST ARG OF THE CALL
+for last; do true; done
+export domain_name=$last
+
+export domain_log_path="${nginx_log_dir}/${domain_name}"
+export domain_conf_path="${nginx_conf_dir}/${domain_name}"
+}
+
+function main() {
+
+case "$FUNC" in
+	creat)
+		creat
+		;;
+	disable)
+		disable
+		;;
+	activate)
+		activate
+		;;
+	remove)
+		remove
+		;;
+	list)
+		list
+		;;
+esac
+}
 ######################################
 ################ MAIN ################
 ######################################
 
+arguments "$@"
 
+main 
+
+exit
