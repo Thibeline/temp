@@ -20,6 +20,7 @@ IFS=$'\n\t'
 
 FILE_NOT_FOUND=10
 DOMAIN_EXISTING=11
+USER_NOT_ROOT=12
 
 ######################################
 ############ VARIABLE ################
@@ -214,6 +215,17 @@ function reload_nginx() {
 
 }
 
+#
+# TODO function description
+# @param	TODO The first parameter
+# @return
+#
+function check_root() {
+	if [[ $EUID -ne 0 ]]; then
+		echo "You must be root to use this scritp!"
+		exit $USER_NOT_ROOT
+	fi
+}
 
 function arguments() {
 
@@ -281,6 +293,8 @@ esac
 ######################################
 ################ MAIN ################
 ######################################
+
+check_root
 
 arguments "$@"
 
