@@ -41,7 +41,7 @@ function disable() {
 		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "${domain_conf_path}.conf".conf "${domain_conf_path}.conf".disable
+	mv "${domain_conf_path}.conf" "${domain_conf_path}.disable"
 
 	reload_nginx
 
@@ -109,7 +109,8 @@ j=1
 set +e
 
 if [[ -n "${opt_a}" ]]; then
-	for entry in "${nginx_conf_dir}"*; do
+
+	for entry in "${nginx_conf_dir}"/*; do
 
 		p=`basename "$entry"`
 		t=${p%.*}
@@ -133,7 +134,8 @@ if [[ -n "${opt_a}" ]]; then
 	done
 
 elif [[ -n "${opt_d}" ]]; then
-	for entry in "${nginx_conf_dir}"*; do
+
+	for entry in "${nginx_conf_dir}"/*; do
 		p=`basename "$entry"`
 		t=${p%.*}
 		echo "$p" | grep 'disable' > /dev/null
@@ -145,9 +147,11 @@ elif [[ -n "${opt_d}" ]]; then
 			fi
 
 	done
+	
 else
 
-	for entry in "${nginx_conf_dir}"*; do
+
+	for entry in "${nginx_conf_dir}"/*; do
 		p=`basename "$entry"`
 		t=${p%.*}
 		echo "$p" | grep '.conf' > /dev/null
@@ -211,7 +215,7 @@ function reload_nginx() {
 
 function arguments() {
 
-declare -r FUNC="$1"
+export FUNC="$1"
 shift;
 
 opt_a=""
@@ -226,11 +230,11 @@ while true ; do
   case "$1" in
     -a|--all) 
       shift;
-      opt_a=AAA
+      export opt_a=AAA
       ;;
     -d|--disable) 
 	  shift;
-	  opt_d=DDD
+	  export opt_d=DDD
 	  ;;
     --)
       break;
@@ -241,15 +245,13 @@ done
 #reading the name of the domain we want to use
 # NEED TO BE THE LAST ARG OF THE CALL
 for last; do true; done
-declare -r domain_name=$last
+export domain_name=$last
 
-declare -r domain_log_path="${nginx_log_dir}/${domain_name}"
-declare -r domain_conf_path="${nginx_conf_dir}/${domain_name}"
+export domain_log_path="${nginx_log_dir}/${domain_name}"
+export domain_conf_path="${nginx_conf_dir}/${domain_name}"
 }
 
 function main() {
-
-arguments
 
 case "$FUNC" in
 	creat)
@@ -268,11 +270,13 @@ case "$FUNC" in
 		list
 		;;
 esac
-
+}
 ######################################
 ################ MAIN ################
 ######################################
 
-main
+arguments "$@"
+
+main 
 
 exit
