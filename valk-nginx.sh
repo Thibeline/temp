@@ -51,12 +51,12 @@ function disable() {
 #OK
 function activate() {
 	
-	if [ ! -e "${domain_conf_path}.disable" ]; then
-		echo " File ${domain_conf_path}.disable not found"
+	if [ ! -e "${domain_conf_path}*" ]; then
+		echo " File ${domain_conf_path} not found"
 		exit $FILE_NOT_FOUND 
 	fi
 
-	mv "$domain_conf_path".disable "$domain_conf_path".conf
+	mv "$domain_conf_path"* "$domain_conf_path".conf
 
 	reload_nginx
 
@@ -84,13 +84,15 @@ function creat() {
 function remove() {
 
 	if [ ! -e "${domain_conf_path}"* ]; then
-		echo "  File ${domain_conf_path}.conf not found"
+		echo "  File ${domain_conf_path} not found"
 		exit $FILE_NOT_FOUND 
 	fi
 
 	rm "${domain_conf_path}".*
-	rm -rf "${domain_log_path}"
-	
+
+	if [[ -z "${opt_k}" ]]; then
+		rm -rf "${domain_log_path}"
+	fi
 
 	reload_nginx
 }
@@ -147,7 +149,7 @@ elif [[ -n "${opt_d}" ]]; then
 			fi
 
 	done
-	
+
 else
 
 
@@ -220,9 +222,10 @@ shift;
 
 opt_a=""
 opt_d=""
+opt_k=""
 
 #reading option put in input 
-OPTS=$( getopt -o a,d -l all,disable -- "$@" )
+OPTS=$( getopt -o a,d,k -l all,disable -- "$@" )
 
 eval set -- "$OPTS"
 
@@ -235,6 +238,10 @@ while true ; do
     -d|--disable) 
 	  shift;
 	  export opt_d=DDD
+	  ;;
+	-k|--keeplog)
+	  shift;
+	  export opt_k=KKK
 	  ;;
     --)
       break;
