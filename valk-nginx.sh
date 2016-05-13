@@ -21,6 +21,8 @@ IFS=$'\n\t'
 FILE_NOT_FOUND=10
 DOMAIN_EXISTING=11
 USER_NOT_ROOT=12
+FONCTION_NOT_FOUND=13
+DOMAIN_NAME_INVALID=14
 
 ######################################
 ############ VARIABLE ################
@@ -183,30 +185,7 @@ unset -v result
 
 }
 
-#fucntion main who call the right function depending of the parameter
-#ok
-function main() {
 
-
-case "$FUNC" in
-	creat)
-		creat
-		;;
-	disable)
-		disable
-		;;
-	activate)
-		activate
-		;;
-	remove)
-		remove
-		;;
-	list)
-		list
-		;;
-esac
-
-}
 
 ######################################
 ############# PROTECTED ##############
@@ -218,11 +197,6 @@ function reload_nginx() {
 
 }
 
-#
-# TODO function description
-# @param	TODO The first parameter
-# @return
-#
 function check_root() {
 	if [[ $EUID -ne 0 ]]; then
 		echo "You must be root to use this scritp!"
@@ -238,6 +212,7 @@ shift;
 opt_a=""
 opt_d=""
 opt_k=""
+opt_n=""
 
 #reading option put in input 
 OPTS=$( getopt -o a,d,k -l all,disable -- "$@" )
@@ -273,10 +248,18 @@ done
 for last; do true; done
 export domain_name=$last
 
+if [[ ! "${domain_name}" =~ ^[[:alnum:]][-[[:alnum:]] ]]; then
+	echo "The domain must begin with a letter or a number and contain letter, number or an hyphen."
+	exit  $DOMAIN_NAME_INVALID
+fi
+
 export domain_log_path="${nginx_log_dir}/${domain_name}"
 export domain_conf_path="${nginx_conf_dir}/${domain_name}"
 }
 
+
+#fucntion main who call the right function depending of the parameter
+#ok
 function main() {
 
 case "$FUNC" in
@@ -295,7 +278,12 @@ case "$FUNC" in
 	list)
 		list
 		;;
+	*)
+		echo "ERROR function does not exist"
+		exit $FONCTION_NOT_FOUND
+		;;
 esac
+
 }
 ######################################
 ################ MAIN ################
