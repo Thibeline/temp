@@ -73,8 +73,11 @@ function creat() {
 	fi
 
 	touch "${domain_conf_path}".conf
-	mkdir "$domain_log_path"
-	touch "${domain_log_path}/error.log" "${domain_log_path}/access.log"
+
+	if [[ -z "${opt_n}" ]]; then		
+		mkdir "$domain_log_path"
+		touch "${domain_log_path}/error.log" "${domain_log_path}/access.log"
+	fi
 
 	reload_nginx
 
@@ -255,6 +258,10 @@ while true ; do
 	  shift;
 	  export opt_k=KKK
 	  ;;
+	-n|--nolog)
+	   shift;
+	   export opt_n=NNN
+	   ;;
     --)
       break;
       ;;
